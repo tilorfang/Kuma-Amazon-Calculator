@@ -2,6 +2,13 @@
 
 **版本：1.0 · Copyright © 2026 Kuma**
 
+## 下载即用
+
+**[下载 Windows 版 EXE（约 31 MB）](https://github.com/tilorfang/Kuma-Amazon-Calculator/releases/download/v1.0/Kuma-Amazon-Calculator-1.0.exe)** · [查看发行版](https://github.com/tilorfang/Kuma-Amazon-Calculator/releases/tag/v1.0)
+
+下载后双击 EXE 即可使用，无需编译、无需安装 Python 或另行下载 OCR 模型。适用于 Windows 10/11 64 位，需要 .NET Framework 4.8。
+
+
 亚马逊运费与利润计算器，支持离线 OCR 识图。
 
 - **三种图片获取方式**：粘贴图片（Ctrl+V）、框选屏幕截图、选择本地图片。自动识别售价、包装尺寸和重量，识别后可手动核对修改。
