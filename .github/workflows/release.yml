@@ -1,0 +1,80 @@
+name: Publish Windows app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-1.0
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build standalone EXE
+        shell: powershell
+        run: |
+          & .\build-single.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+          $app = Get-Item -LiteralPath '.\Kuma亚马逊运费计算器.exe'
+          if ($app.VersionInfo.FileVersion -ne '1.0') { throw 'Unexpected app version' }
+          Copy-Item -LiteralPath $app.FullName -Destination 'Kuma-Amazon-Calculator-1.0.exe'
+          $hash = (Get-FileHash -LiteralPath 'Kuma-Amazon-Calculator-1.0.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path (Get-Location) 'SHA256SUMS.txt'), ($hash + '  Kuma-Amazon-Calculator-1.0.exe' + [Environment]::NewLine), (New-Object Text.UTF8Encoding($false)))
+      - name: Publish release and download
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const repo = context.repo;
+            let release;
+            try {
+              release = (await github.rest.repos.getReleaseByTag({...repo, tag: 'v1.0'})).data;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+              release = (await github.rest.repos.createRelease({
+                ...repo,
+                tag_name: 'v1.0',
+                target_commitish: context.sha,
+                name: 'Kuma亚马逊运费计算器 1.0',
+                draft: true,
+                body: [
+                  '## 下载使用',
+                  '',
+                  '下载下方 **Kuma-Amazon-Calculator-1.0.exe**，双击即可打开。',
+                  '无需编译，无需安装 Python，无需另行下载 OCR 模型。',
+                  '',
+                  '适用于 Windows 10/11 64 位，需要 .NET Framework 4.8。',
+                  '',
+                  '支持离线 OCR、粘贴图片/屏幕截图/选择图片、实重与材积重自动计费、利润联动和多件装计算。',
+                  'OCR 结果请人工核对；内置 FBA 为固定参考费率，并非实时费用。',
+                  '',
+                  '程序未做代码签名，部分 Windows 电脑可能显示发布者验证提示。',
+                  '',
+                  'Copyright © 2026 Kuma。第三方许可保留在程序内置依赖中。'
+                ].join('\n')
+              })).data;
+            }
+            for (const name of ['Kuma-Amazon-Calculator-1.0.exe', 'SHA256SUMS.txt']) {
+              const assets = (await github.rest.repos.listReleaseAssets({...repo, release_id: release.id})).data;
+              const existing = assets.find(asset => asset.name === name);
+              if (existing) await github.rest.repos.deleteReleaseAsset({...repo, asset_id: existing.id});
+              const data = fs.readFileSync(name);
+              await github.rest.repos.uploadReleaseAsset({
+                ...repo, release_id: release.id, name, data,
+                headers: {'content-type': 'application/octet-stream', 'content-length': data.length}
+              });
+            }
+            await github.rest.repos.updateRelease({...repo, release_id: release.id, draft: false, make_latest: 'true'});
