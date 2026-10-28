@@ -1,0 +1,8 @@
+*.exe
+version.res
+payload.zip
+payload.manifest
+__pycache__/
+verification*/
+*.user
+*.suo
