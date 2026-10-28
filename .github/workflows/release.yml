@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Build standalone EXE
-        shell: powershell
+        shell: pwsh
         run: |
           & .\build-single.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
